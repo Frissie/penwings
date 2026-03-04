@@ -1,18 +1,46 @@
+[build-system]
+requires = ["setuptools>=68", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "penwings"
 dynamic = ["version"]
 description = "Lightweight library to handle data and reproduce workflows"
-readme = "README.md"
-license = {text = "LICENSE"}
+readme = { file = "README.md", content-type = "text/markdown" }
+license = "MIT"
 authors = [
-    {name = "Raf Blanckaert",email = "R.Blanckaert@outlook.com"}
+    { name = "Raf Blanckaert", email = "r.blanckaert@outlook.com" }
 ]
 requires-python = ">=3.11"
+
+keywords = ["data", "workflow", "reproducibility", "sql", "analytics"]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+
 dependencies = [
-    "sqlalchemy (>=2.0.46,<3.0.0)",
-    "pyodbc (>=5.3.0,<6.0.0)",
-    "pandas (>=3.0.0,<4.0.0)",
-    "numpy (>=2.4.1,<3.0.0)"
+    "sqlalchemy>=2.0,<3.0",
+    "pyodbc>=5.0,<6.0",
+    "pandas>=2.2,<4.0",
+    "numpy>=1.26,<3.0",
+]
+
+[project.optional-dependencies]
+excel = ["openpyxl>=3.1,<4.0"]
+ml = ["scikit-learn>=1.4,<2.0"]
+scipy = ["scipy>=1.11,<2.0"]
+optuna = ["optuna>=3.5,<5.0"]
+all = [
+    "openpyxl>=3.1,<4.0",
+    "scikit-learn>=1.4,<2.0",
+    "scipy>=1.11,<2.0",
+    "optuna>=3.5,<5.0",
 ]
 
 [project.urls]
@@ -20,40 +48,25 @@ Homepage = "https://github.com/Frissie/penwings"
 Repository = "https://github.com/Frissie/penwings"
 Issues = "https://github.com/Frissie/penwings/issues"
 
-
-[tool.setuptools_scm]
-version_scheme = "guess-next-dev"
-local_scheme = "no-local-version"
-tag_regex = "^v(?P<version>.*)$"
-
+# setuptools config
 [tool.setuptools]
-package-dir = {"" = "src"}
+package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["penwings*"]
-exclude = ["penwings._*"]
 
-[build-system]
-requires = ["setuptools>=68", "wheel", "setuptools-scm"]
-build-backend = "setuptools.build_meta"
+# Versioning via SCM
+[tool.setuptools_scm]
+version_scheme = "guess-next-dev"
+local_scheme = "no-local-version"
+tag_regex = "^v(?P<version>.*)$"
+write_to = "src/penwings/_version.py"
 
+# uv configuration
 [dependency-groups]
 dev = [
-    "openpyxl>=3.1.5",
-    "optuna>=4.7.0",
-    "scikit-learn>=1.8.0",
-    "scipy>=1.17.0",
+    "pytest>=8.0",
+    "ruff>=0.3",
+    "mypy>=1.8",
 ]
-
-[project.optional-dependencies]
-scipy = ["scipy (>=1.17.0,<2.0.0)"]
-sklearn = ["scikit-learn (>=1.8.0,<2.0.0)"]
-optuna= ["optuna (>=4.7.0,<5.0.0)"]
-all = ["openpyxl (>=3.1.5,<4.0.0)"]
-
-[[tool.uv.index]]
-name = "testpypi"
-url = "https://test.pypi.org/simple/"
-publish-url = "https://test.pypi.org/legacy/"
-explicit = true
