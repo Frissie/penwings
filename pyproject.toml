@@ -43,6 +43,12 @@ all = [
     "optuna>=3.5,<5.0",
 ]
 
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.3",
+    "mypy>=1.8",
+]
+
 [project.urls]
 Homepage = "https://github.com/Frissie/penwings"
 Repository = "https://github.com/Frissie/penwings"
@@ -62,11 +68,3 @@ version_scheme = "guess-next-dev"
 local_scheme = "no-local-version"
 tag_regex = "^v(?P<version>.*)$"
 write_to = "src/penwings/_version.py"
-
-# uv configuration
-[dependency-groups]
-dev = [
-    "pytest>=8.0",
-    "ruff>=0.3",
-    "mypy>=1.8",
-]
