@@ -1,8 +1,7 @@
 from .io.cache import SQLParquetCache
-from .paths import input_dir, output_dir
+from .paths.project_paths import ProjectPaths
 
 __all__ = [
     "SQLParquetCache",
-    "input_dir",
-    "output_dir",
+    "ProjectPaths",
 ]
