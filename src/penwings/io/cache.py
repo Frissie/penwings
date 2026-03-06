@@ -4,8 +4,8 @@ from sqlalchemy import Engine
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Unpack, Optional
-from .._utils._typing import SQLParquetKwargs
-from .._utils._decorators import timing_sql
+from ..utils._typing import SQLParquetKwargs
+from ..utils._decorators import timing_sql
 
 
 class SQLParquetCache:
