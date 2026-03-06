@@ -183,7 +183,7 @@ class ProjectPaths:
     def show(self):
         # Only show created folder groups
         path_map = {
-            "data": [self.data, self.data_raw, self.data_interim, self.data_processed, self.data_external],
+            "data": [self.data, self.data_raw, self.data_processed, self.data_external],
             "models": [self.models],
             "features": [self.features],
             "reports": [self.reports, self.figures, self.tables],
