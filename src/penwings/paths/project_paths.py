@@ -2,7 +2,155 @@ from pathlib import Path
 from typing import Optional
 
 
-class ProjectPaths:
+class PathBase:
+    """
+    Core base class for managing project-related filesystem paths.
+
+    `PathBase` provides a minimal, extensible foundation for defining and
+    accessing paths within a project. It centralizes all paths in an internal
+    registry and exposes them through both attribute-style (dot notation)
+    and dictionary-style access.
+
+    The class is designed to be subclassed by concrete path managers that
+    define specific directory structures (e.g. data, models, reports).
+
+    Key features
+    ------------
+    • Automatic project root detection based on filesystem markers
+    • Centralized path registry (`_paths`) as a single source of truth
+    • Safe path registration with duplicate protection
+    • Attribute-style access: ``paths.data``
+    • Dictionary-style access: ``paths['data']``
+    • Clean and extensible base for mixins and derived classes
+
+    Root Detection
+    --------------
+    If no root is provided, the class attempts to detect the project root by
+    traversing the current working directory and its parents, looking for
+    known marker files.
+
+    By default, the following marker is used:
+
+    - ``pyproject.toml``
+
+    The first directory containing any marker is considered the project root.
+    If no markers are found, the current working directory is used.
+
+    Parameters
+    ----------
+    root : str or pathlib.Path, optional
+        The project root directory. If provided, it overrides automatic
+        root detection.
+
+    Attributes
+    ----------
+    root : pathlib.Path
+        The detected or user-defined project root directory.
+
+    _paths : dict[str, pathlib.Path | Any]
+        Internal registry storing all paths and path-like objects.
+        This acts as the single source of truth for all path access.
+
+    Methods
+    -------
+    _detect_root()
+        Detect the project root by scanning parent directories for markers.
+
+    _add_path(name, path)
+        Register a new path in the internal registry.
+
+    __getitem__(key)
+        Access a registered path using dictionary-style access.
+
+    __getattr__(name)
+        Access a registered path using attribute-style access.
+
+    __repr__()
+        Return a string representation of the instance.
+
+    Notes
+    -----
+    - All paths should be registered via :meth:`_add_path` to ensure
+      consistency and avoid accidental overwrites.
+    - Direct assignment of attributes (e.g. ``self.data = ...``) is discouraged,
+      as it bypasses the internal registry.
+    - This class does not enforce that all registered values are
+      ``pathlib.Path`` instances, allowing flexibility for advanced use
+      cases (e.g. nested path nodes).
+
+    Examples
+    --------
+    Basic usage in a subclass:
+
+    >>> class MyPaths(PathBase):
+    ...     def __init__(self, root=None):
+    ...         super().__init__(root)
+    ...         self._add_path("data", self.root / "data")
+    ...         self._add_path("models", self.root / "models")
+
+    >>> paths = MyPaths()
+    >>> paths.data
+    PosixPath('.../data')
+
+    >>> paths["models"]
+    PosixPath('.../models')
+
+    Attempting to access a non-existing path:
+
+    >>> paths["unknown"]
+    KeyError: "'unknown' not found. Available keys: [...]"
+    """
+
+    def __init__(self, root=None):
+        self._paths = {}
+        self._paths["root"] = Path(root) if root else self._detect_root()
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(root={self.root})"
+
+    @property
+    def root(self):
+        return self._paths["root"]
+
+    def _detect_root(self):
+        cwd = Path.cwd()
+        markers = ["pyproject.toml"]
+        for parent in [cwd] + list(cwd.parents):
+            if any((parent / m).exists() for m in markers):
+                return parent
+        return cwd
+
+    def _add_path(self, name: str, path: Path):
+        if name in self._paths:
+            raise ValueError(f"Path '{name}' already exists")
+        self._paths[name] = path
+
+    def __getitem__(self, key: str):
+        try:
+            return self._paths[key]
+        except KeyError:
+            raise KeyError(f"{key!r} not found. Available keys: {list(self._paths.keys())}")
+
+    def __getattr__(self, name):
+        if name in self._paths:
+            return self._paths[name]
+        raise AttributeError(f"{self.__class__.__name__!r} object has no attribute {name!r}")
+
+
+class PathMixin:
+    """
+    Requires:
+        self._paths: dict[str, Path]
+    """
+
+    def keys(self):
+        return [k for k, v in self._paths.items() if isinstance(v, Path) and k != "root"]
+
+    def as_dict(self):
+        return {k: v for k, v in self._paths.items() if isinstance(v, Path) and k != "root"}
+
+
+class ProjectPaths(PathBase, PathMixin):
     """
     Manage standardized directory structures for data science projects.
 
@@ -159,28 +307,28 @@ class ProjectPaths:
     def __init__(
         self, root: Optional[Path | str] = None, create: bool = True, folders: Optional[str | list] = None, custom_dirs: Optional[dict] = None
     ):
-        self.root = Path(root) if root else self._detect_root()
+        super().__init__(root)
 
         # data
-        self.data = self.root / "data"
-        self.data_raw = self.data / "raw"
-        self.data_processed = self.data / "processed"
-        self.data_external = self.data / "external"
+        self._add_path("data", self.root / "data")
+        self._add_path("raw", self.root / "data" / "raw")
+        self._add_path("processed", self.root / "data" / "processed")
+        self._add_path("external", self.root / "data" / "external")
 
         # ML / features
-        self.features = self.root / "features"
-        self.models = self.root / "models"
+        self._add_path("feature", self.root / "feature")
+        self._add_path("models", self.root / "models")
 
         # outputs
-        self.reports = self.root / "reports"
-        self.figures = self.reports / "figures"
-        self.tables = self.reports / "tables"
+        self._add_path("reports", self.root / "reports")
+        self._add_path("figures", self.root / "reports" / "figures")
+        self._add_path("tables", self.root / "reports" / "tables")
 
         # other
-        self.sql = self.root / "sql"
-        self.notebooks = self.root / "notebooks"
-        self.configs = self.root / "configs"
-        self.logs = self.root / "logs"
+        self._add_path("sql", self.root / "sql")
+        self._add_path("notebooks", self.root / "notebooks")
+        self._add_path("configs", self.root / "configs")
+        self._add_path("logs", self.root / "logs")
 
         self._folders = folders
         self._created_groups = []
@@ -217,14 +365,6 @@ class ProjectPaths:
         else:
             self._folders.append("custom")
 
-    def _detect_root(self):
-        cwd = Path.cwd()
-        markers = ["data", "models", "notebooks", "configs", "README.md", "pyproject.toml"]
-        for parent in [cwd] + list(cwd.parents):
-            if any((parent / m).exists() for m in markers):
-                return parent
-        return cwd
-
     def _create_dirs(self, create, folders=None):
 
         # Determine which paths to create
@@ -258,21 +398,6 @@ class ProjectPaths:
             print(key)
             for path in self._path_map.get(key, []):
                 print(f"  {path}")
-
-    def __getitem__(self, key: str):
-        try:
-            return getattr(self, key)
-        except AttributeError:
-            raise KeyError(f"{key} is not a valid project path. Available keys: {self.keys()}")
-
-    def keys(self):
-        return [k for k in self.__dict__ if isinstance(getattr(self, k), Path) and k != "root"]
-
-    def as_dict(self):
-        return {k: v for k, v in self.__dict__.items() if isinstance(v, Path) and k != "root"}
-
-    def __repr__(self):
-        return f"ProjectPaths(root={self.root})"
 
 
 if __name__ == "__main__":
