@@ -1,151 +1,256 @@
 # Penwings
 
-**Penwings** is a lightweight Python library designed to simplify SQL data workflows by automatically importing data from SQL and caching it as Parquet files. This ensures faster subsequent access and reproducible pipelines, while reducing database get.
+**Penwings** is a lightweight Python library for building **reproducible data workflows**.
+
+It provides simple, composable tools to:
+- manage project structure
+- standardize data access
+- cache SQL queries efficiently
+
+The goal is to reduce boilerplate and make data pipelines **faster, cleaner, and reproducible by default**.
 
 ---
 
-## Table of Contents
+## ✨ Features
 
-1. [Features](#features)  
-2. [Installation](#installation)  
-3. [Getting Started](#getting-started)  
-4. [Usage](#usage)  
-5. [Versioning](#versioning)  
-6. [Contributing](#contributing)  
-7. [License](#license)  
+### 🗂️ Project Structure Management
+- Standardized folder setup for data science projects
+- Automatic project root detection
+- Flexible, extensible path system
 
----
+### 🧠 SQL → Parquet Caching
+- Execute SQL queries via SQLAlchemy
+- Automatically cache results as Parquet
+- Reuse cached data to avoid unnecessary database hits
+- Configurable refresh logic
 
-## Features
-
-- get data from SQL queries or SQL files  
-- Automatically save query results as Parquet files  
-- Reuse Parquet files to avoid redundant queries  
-- Simple, stable API for reproducible workflows  
-- Optimized for performance and ease of integration  
+### ⚡ Lightweight & Modular
+- Minimal core dependencies (`pandas`, `numpy`)
+- Optional SQL support
+- Designed to scale into larger workflows
 
 ---
 
-## Installation
+## 📦 Installation
 
-Install via pip:
-
+```bash
 pip install penwings
+````
 
-> Make sure you have Python 3.11+ installed.
+### Optional SQL support
+
+```bash
+pip install penwings[sql]
+```
+
+> Requires Python **3.11+**
 
 ---
 
-## Getting Started
+## 🚀 Quick Start
 
-### Importing the Library
+### 1. Project structure
 
-from penwings import SQLParquetCache
+```python
+from penwings import ProjectPaths
 
-### Initialize the Cache
+paths = ProjectPaths()
 
-You can initialize the cache by providing either a SQL directory or a query string, along with a Parquet directory:
-
-```
-from sqlalchemy import create_engine
-```
-
-# SQL connection
-```
-engine = create_engine("postgresql://user:password@localhost/dbname")
-
-# Initialize the cache
-loader = SQLParquetCache(
-    sql_dir="sql_files",        # Optional if using query string
-    parquet_dir="parquet_cache",
-    conn=engine
-)
-```
----
-
-## Usage
-
-### 1. Using SQL Files
-
-If you have SQL files stored in a directory:
-
-```
-# Run a SQL file and cache the result
-df = loader.get("monthly_sales.sql")
+print(paths.data)
+print(paths.models)
 ```
 
-- `penwings` will automatically check if a Parquet version exists.
-- If it exists, the cached Parquet is loaded.
-- If not, the SQL query runs and the result is saved as a Parquet file.
-
-### 2. Using SQL Query Strings
-
-You can also pass queries directly:
+Creates a standardized structure like:
 
 ```
-query = "SELECT * FROM sales WHERE month='2026-02'"
-df = loader.get(sql=query, parquet_name="sales_feb2026")
+configs/
+data/
+  raw/
+  processed/
+  external/
+features/
+logs/
+models/
+notebooks/
+reports/
+  figures/
+  tables/
+sql/
 ```
-
-- `parquet_name` determines the Parquet file name.
-- Works similarly to SQL file mode for caching.
-
-### 3. Automatic Parquet Management
-
-- All results are cached in the specified `parquet_dir`.
-- This reduces repeated database queries and ensures reproducibility.
-- Cached files can be reloaded for faster access.
 
 ---
 
-## Versioning
+### 2. SQL caching
 
-Penwings follows **semantic versioning**:
-
-- **MAJOR**: Breaking changes to API  
-- **MINOR**: New features, backward-compatible  
-- **PATCH**: Bug fixes  
-
----
-
-## Contributing
-
-We welcome contributions!  
-
-1. Fork the repository  
-2. Create a feature branch (`git checkout -b feature/my-feature`)  
-3. Commit your changes (`git commit -m 'Add new feature'`)  
-4. Push to branch (`git push origin feature/my-feature`)  
-5. Open a pull request  
-
-Please ensure your code follows PEP8 standards.
-
----
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
----
-
-## Example Workflow
-
-```
+```python
 from sqlalchemy import create_engine
 from penwings import SQLParquetCache
 
 engine = create_engine("sqlite:///example.db")
 
-loader = SQLParquetCache(
-    sql_dir="sql_queries",
-    parquet_dir="parquet_cache",
+cache = SQLParquetCache(
+    sql_dir="sql",
+    parquet_dir="cache",
+    conn=engine,
+    refresh_days=1
+)
+```
+
+---
+
+## 📊 Usage
+
+### Using SQL files
+
+```python
+df = cache.get("sales.sql")
+```
+
+* Loads from **Parquet** if cached
+* Otherwise executes SQL and caches result
+
+---
+
+### Using raw SQL
+
+```python
+query = "SELECT * FROM sales WHERE month = '2026-02'"
+
+df = cache.get(
+    sql=query,
+    parquet_name="sales_feb"
+)
+```
+
+---
+
+### Cache behavior
+
+```python
+df = cache.get("sales.sql", force=True)
+```
+
+* `force=True` → always re-run SQL
+* `refresh_days=N` → cache expires after N days
+* returns:
+
+  * `DataFrame`
+
+
+---
+
+## 🧩 ProjectPaths
+
+Create only specific parts of a project:
+
+```python
+paths = ProjectPaths(folders=["data", "ml"])
+```
+
+Custom directories:
+
+```python
+paths = ProjectPaths(
+    custom_dirs={
+        "modules": "src/modules",
+        "views": "src/views"
+    }
+)
+```
+
+Access paths:
+
+```python
+paths.data
+paths["models"]
+paths.as_dict()
+```
+
+---
+
+## 🧠 Design Philosophy
+
+Penwings is built around a few core ideas:
+
+* **Reproducibility first** → deterministic data access via caching
+* **Convention over configuration** → sensible defaults for structure
+* **Composable building blocks** → small tools that work well together
+* **Lightweight core** → no heavy framework overhead
+
+---
+
+## 🛣️ Roadmap
+
+* Pipeline abstraction (data workflows as steps)
+* Improved SQL utilities and query management
+* Integration with feature engineering workflows
+* Better caching strategies and metadata tracking
+
+---
+
+## 🔢 Versioning
+
+Penwings follows **semantic versioning**:
+
+* **MAJOR** → breaking changes
+* **MINOR** → new features
+* **PATCH** → bug fixes
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome!
+
+1. Fork the repository
+2. Create a branch (`feature/my-feature`)
+3. Commit your changes
+4. Open a pull request
+
+---
+
+## 📄 License
+
+MIT License — see [LICENSE](LICENSE)
+
+---
+
+## 💡 Example Workflow
+
+```python
+from sqlalchemy import create_engine
+from penwings import ProjectPaths, SQLParquetCache
+
+# Setup project structure
+paths = ProjectPaths()
+
+# Setup SQL cache
+engine = create_engine("sqlite:///example.db")
+
+cache = SQLParquetCache(
+    sql_dir=paths.sql,
+    parquet_dir=paths.data,
     conn=engine
 )
 
-# get data
-df_jan = loader.get("sales_january.sql")
-df_feb = loader.get(sql="SELECT * FROM sales WHERE month='2026-02'", parquet_name="sales_feb")
+# Load data
+df_sales = cache.get("sales.sql")
+
 ```
 
-- SQL files are automatically cached as Parquet  
-- Subsequent loads are fast and do not hit the database  
+---
+
+## ⭐ Why Penwings?
+
+Penwings sits between:
+
+* ad-hoc scripts ❌
+* heavy frameworks ❌
+
+It gives you just enough structure to:
+
+* stay organized
+* move fast
+* keep workflows reproducible
+
+without getting in your way.

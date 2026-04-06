@@ -1,3 +1,5 @@
+import json
+
 from pathlib import Path
 from typing import Optional
 
@@ -125,6 +127,11 @@ class PathBase:
             raise ValueError(f"Path '{name}' already exists")
         self._paths[name] = path
 
+    def _create_dirs(self):
+        for path in self._paths.values():
+            if isinstance(path, Path):
+                path.mkdir(parents=True, exist_ok=True)
+
     def __getitem__(self, key: str):
         try:
             return self._paths[key]
@@ -148,6 +155,11 @@ class PathMixin:
 
     def as_dict(self):
         return {k: v for k, v in self._paths.items() if isinstance(v, Path) and k != "root"}
+
+    def show(self):
+        for k, v in self._paths.items():
+            if isinstance(v, Path) and k != "root":
+                print(f"{k:10}{v}")
 
 
 class ProjectPaths(PathBase, PathMixin):
@@ -309,118 +321,208 @@ class ProjectPaths(PathBase, PathMixin):
     ):
         super().__init__(root)
 
-        # data
-        self._add_path("data", self.root / "data")
-        self._add_path("raw", self.root / "data" / "raw")
-        self._add_path("processed", self.root / "data" / "processed")
-        self._add_path("external", self.root / "data" / "external")
-
-        # ML / features
-        self._add_path("feature", self.root / "feature")
-        self._add_path("models", self.root / "models")
-
-        # outputs
-        self._add_path("reports", self.root / "reports")
-        self._add_path("figures", self.root / "reports" / "figures")
-        self._add_path("tables", self.root / "reports" / "tables")
-
-        # other
-        self._add_path("sql", self.root / "sql")
-        self._add_path("notebooks", self.root / "notebooks")
-        self._add_path("configs", self.root / "configs")
-        self._add_path("logs", self.root / "logs")
-
         self._folders = folders
-        self._created_groups = []
-        self._path_map = {
-            "data": [self.data, self.data_raw, self.data_processed, self.data_external],
-            "models": [self.models],
-            "features": [self.features],
-            "reports": [self.reports, self.figures, self.tables],
-            "sql": [self.sql],
-            "notebooks": [self.notebooks],
-            "configs": [self.configs],
-            "logs": [self.logs],
-        }
+        self._setup_dirs(self._folders)
 
         if custom_dirs is not None:
-            self._create_custom_dirs(custom_dirs)
+            self._setup_custom_dirs(custom_dirs)
 
-        self._create_dirs(create, self._folders)
-
-    def _create_custom_dirs(self, custom_dirs: dict[str, str]):
-        paths = []
-
-        for name, rel_path in custom_dirs.items():
-            path = self.root / rel_path
-            setattr(self, name, path)
-            paths.append(path)
-
-        self._path_map["custom"] = paths
-
-        if self._folders is None:
-            self._folders = "custom"
-        elif isinstance(self._folders, str):
-            self._folders = [self._folders, "custom"]
-        else:
-            self._folders.append("custom")
-
-    def _create_dirs(self, create, folders=None):
-
-        # Determine which paths to create
-        if folders is None:
-            folders_to_create = list(self._path_map.keys())
-        elif folders == "custom":
-            folders_to_create = list(self._path_map.keys())
-        elif isinstance(folders, str):
-            folders_to_create = [folders]
-        elif isinstance(folders, list):
-            folders_to_create = folders
-        else:
-            folders_to_create = []
-
-        invalid = [f for f in folders_to_create if f not in self._path_map]
-
-        if invalid:
-            raise ValueError(f"Invalid folder groups: {invalid}")
-
-        self._created_groups = folders_to_create  # store for show()
-
-        # Flatten paths
         if create:
-            paths_to_create = [p for key in folders_to_create for p in self._path_map.get(key, [])]
+            self._create_dirs()
 
-            for path in paths_to_create:
-                path.mkdir(parents=True, exist_ok=True)
+    def _setup_custom_dirs(self, custom_dirs: dict[str, str]):
+        for name, rel_path in custom_dirs.items():
+            self._add_path(name, self.root / rel_path)
 
-    def show(self):
-        for key in self._created_groups:
-            print(key)
-            for path in self._path_map.get(key, []):
-                print(f"  {path}")
+    def _setup_dirs(self, folders=None):
+        selected_folders = ["data", "ml", "output", "sql", "notebooks", "config", "logs"] if folders is None else folders
+        if isinstance(selected_folders, str):
+            selected_folders = [selected_folders]
+
+        def _create_data():
+            self._add_path("data", self.root / "data")
+            self._add_path("raw", self.root / "data" / "raw")
+            self._add_path("processed", self.root / "data" / "processed")
+            self._add_path("external", self.root / "data" / "external")
+
+        def _create_ml():
+            self._add_path("features", self.root / "features")
+            self._add_path("models", self.root / "models")
+
+        def _create_output():
+            self._add_path("reports", self.root / "reports")
+            self._add_path("figures", self.root / "reports" / "figures")
+            self._add_path("tables", self.root / "reports" / "tables")
+
+        def _create_sql():
+            self._add_path("sql", self.root / "sql")
+
+        def _create_notebooks():
+            self._add_path("notebooks", self.root / "notebooks")
+
+        def _create_config():
+            self._add_path("configs", self.root / "configs")
+
+        def _create_logs():
+            self._add_path("logs", self.root / "logs")
+
+        modules = {
+            "data": _create_data,
+            "ml": _create_ml,
+            "output": _create_output,
+            "sql": _create_sql,
+            "notebooks": _create_notebooks,
+            "notebook": _create_notebooks,
+            "config": _create_config,
+            "conf": _create_config,
+            "logs": _create_logs,
+        }
+
+        for folder in selected_folders:
+            func = modules.get(folder)
+            if func:
+                func()
+            else:
+                raise ValueError(f"Invalid folder groups: {folder}")
+
+
+class ConfigPaths(PathBase, PathMixin):
+    """
+    Manage project folder structures from a JSON configuration file.
+
+    `ConfigPaths` allows defining a project’s directory structure
+    dynamically through a JSON file. Each path specified in the JSON
+    is registered in the internal `_paths` registry and can be accessed
+    via attribute-style (e.g., `paths.data`) or dictionary-style
+    (e.g., `paths["data"]`) access.
+
+    Unlike `ProjectPaths`, `ConfigPaths` does not have predefined
+    folder groups — the folder structure is entirely determined by
+    the JSON configuration.
+
+    Parameters
+    ----------
+    config : str or pathlib.Path
+        Path to the JSON configuration file. The JSON must contain
+        a top-level `"paths"` key mapping attribute names to
+        relative paths. Example:
+
+        {
+            "paths": {
+                "data": "data",
+                "raw": "data/raw",
+                "processed": "data/processed",
+                "configs": "configs"
+            }
+        }
+
+    root : str or pathlib.Path, optional
+        Project root directory. If not provided, the root is automatically
+        detected using `PathBase` root detection (e.g., by looking for
+        `pyproject.toml`).
+
+    create : bool, default True
+        If True, directories specified in the JSON configuration will
+        be created on the filesystem.
+
+    Attributes
+    ----------
+    root : pathlib.Path
+        The detected or user-defined project root.
+
+    Methods
+    -------
+    show()
+        Display all registered paths, excluding the root.
+
+    as_dict()
+        Return a dictionary of all registered paths, excluding the root.
+
+    keys()
+        Return a list of registered path attribute names, excluding the root.
+
+    Notes
+    -----
+    - The JSON configuration determines all paths; there are no
+      hardcoded folder groups.
+    - All paths are registered via `_add_path` to ensure consistency.
+    - Direct assignment to `_paths` is discouraged.
+    - Useful for projects where folder structures may change or be
+      configurable per project/environment.
+    """
+
+    def __init__(
+        self,
+        config: str | Path,
+        root: Optional[str | Path] = None,
+        create: bool = True,
+    ):
+        super().__init__(root)
+
+        config = self._load_config(config)
+        self._build_from_config(config)
+
+        if create:
+            self._create_dirs()
+
+    def _load_config(self, config):
+        config_path = Path(config)
+        if not config_path.exists():
+            raise ValueError(f"Config file not found: {config_path}")
+        if not config_path.suffix == ".json":
+            raise ValueError("Config file needs to be a json file")
+        return json.loads(config_path.read_text())
+
+    def _build_from_config(self, config: dict):
+        """
+        Expected format:
+        {
+            "paths": {
+                "data": "data",
+                "raw": "data/raw",
+                "processed": "data/processed"
+                "configs": "configs"
+            }
+        }
+        """
+        paths = config.get("paths")
+        if not paths:
+            raise ValueError("Config must contain a 'paths' key")
+
+        for name, rel_path in paths.items():
+            self._add_path(name, self.root / rel_path)
 
 
 if __name__ == "__main__":
-    print("___Test_1___")
-    test = ProjectPaths(create=False, folders=["data", "reports"], custom_dirs={"modules": "modules", "view": "modules/view"})
-    print(test.view)
-    test.show()
-    print("___Test_2___")
-    test2 = ProjectPaths(create=False)
-    test2.show()
-    for name in ["sql", "data", "models"]:
-        print(test2[name])
-    print("___Test_3___")
-    test3 = ProjectPaths(create=False, custom_dirs={"modules": "modules", "view": "modules/view"})
-    test3.show()
-    print("___Test_4___")
-    test4 = ProjectPaths(create=False, folders="data")
-    test4.show()
-    print("___Test_5___")
-    test5 = ProjectPaths(create=False, folders="data")
-    print(test5)
-    print("___Test_6___")
-    test6 = ProjectPaths(create=True, folders="data", custom_dirs={"modules": "modules", "data": "something"})
-    print(test6.keys())
-    print("___Test_7___")
-    print(test6.as_dict())
+    # print("___Test_1___")
+    # test = ProjectPaths(create=False, folders=["data", "ml"], custom_dirs={"modules": "modules", "view": "modules/view"})
+    # print(test.view)
+    # test.show()
+    # print("___Test_2___")
+    # test2 = ProjectPaths(create=True)
+    # test2.show()
+    # for name in ["sql", "data", "models"]:
+    #     print(test2[name])
+    # print("___Test_3___")
+    # test3 = ProjectPaths(create=False, custom_dirs={"modules": "modules", "view": "modules/view"})
+    # test3.show()
+    # print("___Test_4___")
+    # test4 = ProjectPaths(create=False, folders="data")
+    # test4.show()
+    # print("___Test_5___")
+    # test5 = ProjectPaths(create=False, folders="data")
+    # print(test5)
+    # print("___Test_6___")
+    # test6 = ProjectPaths(create=True, folders="data", custom_dirs={"modules": "modules"})
+    # print(test6.keys())
+    # print("___Test_7___")
+    # print(test6.as_dict())
+
+    print("___Test_8___")
+    test8 = ConfigPaths(config="src/penwings/paths/test.json", create=False)
+    print(test8.root)
+    print(test8.data)
+    print(test8["config"])
+    print(test8.show())
+    print(test8._paths)
+    print(test8.as_dict())

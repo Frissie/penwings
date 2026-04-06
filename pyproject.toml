@@ -25,28 +25,17 @@ classifiers = [
 ]
 
 dependencies = [
-    "sqlalchemy>=2.0,<3.0",
-    "pyodbc>=5.0,<6.0",
     "pandas>=2.2,<4.0",
     "numpy>=1.26,<3.0",
 ]
 
 [project.optional-dependencies]
-excel = ["openpyxl>=3.1,<4.0"]
-ml = ["scikit-learn>=1.4,<2.0"]
-scipy = ["scipy>=1.11,<2.0"]
-optuna = ["optuna>=3.5,<5.0"]
-all = [
-    "openpyxl>=3.1,<4.0",
-    "scikit-learn>=1.4,<2.0",
-    "scipy>=1.11,<2.0",
-    "optuna>=3.5,<5.0",
-]
-
+sql = ["sqlalchemy>=2.0,<3.0"]
 dev = [
     "pytest>=8.0",
     "ruff>=0.3",
     "mypy>=1.8",
+    "sqlalchemy>=2.0,<3.0",
 ]
 
 [project.urls]

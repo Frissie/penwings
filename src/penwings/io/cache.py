@@ -1,11 +1,13 @@
 import pandas as pd
 
-from sqlalchemy import Engine
 from pathlib import Path
 from datetime import datetime, timedelta
-from typing import Unpack, Optional
+from typing import Unpack, Optional, TYPE_CHECKING
 from ..utils._typing import SQLParquetKwargs
 from ..utils._decorators import timing_sql
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine import Engine
 
 
 class SQLParquetCache:
@@ -62,6 +64,10 @@ class SQLParquetCache:
         verbose: bool = True,
         **kwargs: Unpack[SQLParquetKwargs],
     ):
+        try:
+            import sqlalchemy  # noqa: F401
+        except ImportError:
+            raise ImportError("SQLParquetCache requires 'sqlalchemy'. Install it with: pip install penwings[sql]")
 
         if sql_dir is not None:
             self.sql_dir: Path = Path(sql_dir)
