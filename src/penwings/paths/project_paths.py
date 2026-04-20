@@ -159,7 +159,7 @@ class PathMixin:
     def show(self):
         for k, v in self._paths.items():
             if isinstance(v, Path) and k != "root":
-                print(f"{k:10}{v}")
+                print(f"{k:10}{v.resolve()}")
 
 
 class ProjectPaths(PathBase, PathMixin):
@@ -494,10 +494,10 @@ class ConfigPaths(PathBase, PathMixin):
 
 
 if __name__ == "__main__":
-    # print("___Test_1___")
-    # test = ProjectPaths(create=False, folders=["data", "ml"], custom_dirs={"modules": "modules", "view": "modules/view"})
-    # print(test.view)
-    # test.show()
+    print("___Test_1___")
+    test = ProjectPaths(create=False, folders=["data", "ml"], custom_dirs={"modules": "modules", "view": "modules/view"})
+    print(test.view)
+    test.show()
     # print("___Test_2___")
     # test2 = ProjectPaths(create=True)
     # test2.show()
@@ -518,11 +518,11 @@ if __name__ == "__main__":
     # print("___Test_7___")
     # print(test6.as_dict())
 
-    print("___Test_8___")
-    test8 = ConfigPaths(config="src/penwings/paths/test.json", create=False)
-    print(test8.root)
-    print(test8.data)
-    print(test8["config"])
-    print(test8.show())
-    print(test8._paths)
-    print(test8.as_dict())
+    # print("___Test_8___")
+    # test8 = ConfigPaths(config="src/penwings/paths/test.json", create=False)
+    # print(test8.root)
+    # print(test8.data)
+    # print(test8["config"])
+    # print(test8.show())
+    # print(test8._paths)
+    # print(test8.as_dict())
