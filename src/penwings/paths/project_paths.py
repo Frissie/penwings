@@ -401,7 +401,8 @@ class ConfigPaths(PathBase, PathMixin):
 
     Parameters
     ----------
-    config : str or pathlib.Path
+    config : str or pathlib.Path, optional
+        Default location is in ``config.json`` next to the pyproject.toml file
         Path to the JSON configuration file. The JSON must contain
         a top-level `"paths"` key mapping attribute names to
         relative paths. Example:
@@ -465,7 +466,7 @@ class ConfigPaths(PathBase, PathMixin):
             self._create_dirs()
 
     def _load_config(self, config):
-        config_path = self.root / "config.json" if config is None else Path(config)
+        config_path = self._detect_root() / "config.json" if config is None else Path(config)
         if not config_path.exists():
             raise ValueError(f"Config file not found: {config_path}")
         if not config_path.suffix == ".json":
