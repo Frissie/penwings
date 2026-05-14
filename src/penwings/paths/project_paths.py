@@ -180,8 +180,7 @@ class ProjectPaths(PathBase, PathMixin):
     • dictionary-style access to paths
 
     Root detection searches the current working directory and its parents
-    for common project markers such as ``data/``, ``models/``, ``notebooks/``,
-    ``configs/``, ``README.md`` or ``pyproject.toml``.
+    for common project marker ``pyproject.toml``.
 
     Parameters
     ----------
@@ -453,7 +452,7 @@ class ConfigPaths(PathBase, PathMixin):
 
     def __init__(
         self,
-        config: str | Path,
+        config: str | Path = None,
         root: Optional[str | Path] = None,
         create: bool = True,
     ):
@@ -466,7 +465,7 @@ class ConfigPaths(PathBase, PathMixin):
             self._create_dirs()
 
     def _load_config(self, config):
-        config_path = Path(config)
+        config_path = self.root / "config.json" if config is None else Path(config)
         if not config_path.exists():
             raise ValueError(f"Config file not found: {config_path}")
         if not config_path.suffix == ".json":
